@@ -48,7 +48,20 @@ This repository contains a modular and production-ready Terraform configuration 
 
 ## 🔧 Configuration Overview
 
-Customize your deployment by editing `terraform.tfvars` or overriding variables via CLI:
+All input variables are defined in [`variable2.tf`](variable2.tf). You can customize your deployment by:
+
+- Editing default values directly in `variable2.tf`
+- Overriding variables via CLI:
+  ```bash
+  terraform apply -var="vm_name=vm-terraformjlp" -var="location=East US"
+  ```
+- Or using environment variables:
+  ```bash
+  export TF_VAR_vm_name="vm-terraformjlp"
+  export TF_VAR_location="East US"
+  ```
+
+### Example Variable Definitions
 
 ```hcl
 vm_name               = "vm-terraformjlp"
@@ -97,7 +110,7 @@ tags = {
 
 ## 📌 Notes & Best Practices
 
-- 🔒 **Security**: Never commit sensitive credentials to version control. Use `.gitignore` to exclude secrets.
+- 🔒 **Security**: Never commit sensitive credentials to version control. Use `.gitignore` to exclude secrets and `.terraform` directories.
 - 📊 **Diagnostics**: Boot diagnostics are optional and require a storage account. Enable via `diagnostics_enabled = true`.
 - 📁 **File Share Mounting**: Ensure outbound port 445 is allowed for SMB traffic. The share is mounted as drive `Z:` on the VM.
 - 🧼 **Cleanup**: Use `terraform destroy` to remove all resources when no longer needed.
@@ -136,4 +149,6 @@ Want to take this further?
 - Add a visual architecture diagram using [draw.io](https://draw.io) or [Diagrams.net](https://www.diagrams.net/)
 - Integrate with GitHub Actions for CI/CD deployment
 - Split into reusable modules for multi-environment provisioning
-- Add Key Vault integration for secret management
+- Add Azure Key Vault integration for secret management
+- Extend with auto-scaling, monitoring, or domain join features
+
