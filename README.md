@@ -1,154 +1,128 @@
 # azure-vm-terraform-stack
 
-# 🚀 Azure Windows VM Deployment with Terraform
+# 🚀 Azure Windows VM Deployment with Terraform + File Share Integration
 
-This repository contains a modular and production-ready Terraform configuration for deploying **Windows virtual machines** on Microsoft Azure. It provisions secure networking, storage, diagnostics, and access mechanisms, with optional Azure File Share mounting and boot diagnostics. Designed for clarity, reusability, and scalability, this setup is ideal for cloud engineers, DevOps professionals, and infrastructure-as-code enthusiasts.
+This repository provides a modular, production-ready Terraform configuration for deploying **Windows virtual machines** on Microsoft Azure. It includes secure networking, storage, diagnostics, and access mechanisms, with optional **Azure File Share mounting** and **snapshot/restore functionality**. Designed for clarity, reusability, and scalability, this setup is ideal for cloud engineers, DevOps professionals, and infrastructure-as-code enthusiasts seeking a clean, declarative workflow—from provisioning to teardown.
 
----
+## 📦 Prerequisites
 
-## 📁 Repository Structure
-
-| File Name         | Purpose                                                                 |
-|-------------------|-------------------------------------------------------------------------|
-| `main2.tf`        | Orchestrates core resource dependencies and VM provisioning             |
-| `variable2.tf`    | Defines input variables with defaults and validation rules              |
-| `providers2.tf`   | Specifies provider version and optional remote state backend            |
-| `output2.tf`      | Exposes VM metadata, IPs, storage info, and connection details          |
-| `network2.tf`     | Provisions NSG, NIC, public IP, and associates security rules           |
-| `vm2.tf`          | Deploys Windows VM and mounts Azure File Share via VM extension         |
-| `README.md`       | Documentation for setup, usage, and architecture                        |
+- Azure subscription
+- Admin credentials stored in `terraform.tfvars`
+- Terraform installed
+- RDP client
 
 ---
 
-## 🧠 Key Features
+## 🛠️ Deployment Steps
 
-### 🔐 Secure Access
-- Password-based authentication for Windows VMs
-- Sensitive credentials are securely handled and excluded from logs
+### 1. Log into Azure and Open Cloud Shell
+- Go to [Azure Portal](https://portal.azure.com)
+- Select the **Cloud Shell** icon (top-right)
 
-### 🛡️ Network Security
-- NSG rules for RDP (3389), HTTP (80), SMB (445), and outbound internet
-- NIC-to-NSG association ensures traffic control at the interface level
+### 2. Create Resource Group
+```bash
+az group create --resource-group terraformRGjlp --location eastus
+```
 
-### 📦 Storage Integration
-- Azure File Share mounted to Windows VM as drive `Z:` using PowerShell
-- Optional diagnostics storage account for boot logs and troubleshooting
+### 3. Upload Terraform Files
+- In Cloud Shell, select **Manage Files** → **Upload**
+- Upload all `.tf` and `.tfvars` files
+- Run `ls` to verify files are present
 
-### 🧩 Modular & Reusable
-- Parameterized variables for environment, location, VM size, and tags
-- Conditional resource creation (e.g., diagnostics) using `count` logic
-- Clean separation of concerns across files for scalability and clarity
+### 4. Initialize and Validate Terraform
+```bash
+terraform init
+terraform validate
+```
 
-### 📤 Rich Outputs
-- Public and private IPs
-- VM metadata and storage identifiers
-- Centralized tag output for auditing and cost tracking
-
----
-
-## 🔧 Configuration Overview
-
-All input variables are defined in [`variable2.tf`](variable2.tf). You can customize your deployment by:
-
-- Editing default values directly in `variable2.tf`
-- Overriding variables via CLI:
-  ```bash
-  terraform apply -var="vm_name=vm-terraformjlp" -var="location=East US"
-  ```
-- Or using environment variables:
-  ```bash
-  export TF_VAR_vm_name="vm-terraformjlp"
-  export TF_VAR_location="East US"
-  ```
-
-### Example Variable Definitions
-
-```hcl
-vm_name               = "vm-terraformjlp"
-location              = "East US"
-vm_size               = "Standard_DS1_v2"
-admin_username        = "azureuser"
-admin_password        = "SecureP@ssw0rd!"
-diagnostics_enabled   = true
-tags = {
-  environment = "dev"
-  owner       = "joshua"
-}
+### 5. Plan and Apply Deployment
+```bash
+terraform plan -out main2tf.plan
+terraform apply main2tf.plan
 ```
 
 ---
 
-## 🚀 Deployment Instructions
+## 🖥️ Connect to the VM
 
-1. **Initialize Terraform**
-   ```bash
-   terraform init
+1. In Azure Portal, go to **terraformvmjlp**
+2. Select **Connect** → **Download RDP file**
+3. Open the RDP file and log in using the password from `terraform.tfvars`
+---
+
+## 🔗 Mount Azure File Share
+
+1. Go to **terrastorageaccountjlp** → **File Shares** → **vmfileshare**
+2. Select **Connect** → **Show Script**
+3. Copy the PowerShell script and run it inside the VM
+4. Confirm `Z:` drive is mounted
+---
+
+## 📄 Test File Share + Snapshot
+
+1. Upload a blank Notepad file named `filesharetestfile` to `vmfileshare`
+2. Open it from `Z:` in the VM and type:  
    ```
-
-2. **Validate Configuration**
-   ```bash
-   terraform validate
+   this is a test file
    ```
-
-3. **Preview Changes**
-   ```bash
-   terraform plan
-   ```
-
-4. **Apply Infrastructure**
-   ```bash
-   terraform apply
-   ```
-
-5. **Connect to the VM**
-   Use Remote Desktop (RDP) with the public IP and credentials:
-   - Username: `azureuser`
-   - Password: `SecureP@ssw0rd!`
-   - IP: Output from `vm_public_ip`
+3. Save the file
+4. In Azure Portal, go to **vmfileshare** → **Operations** → **Snapshots**
+5. Select **+ Add snapshot** → **OK**
 
 ---
 
-## 📌 Notes & Best Practices
+## 🔁 Modify and Restore File
 
-- 🔒 **Security**: Never commit sensitive credentials to version control. Use `.gitignore` to exclude secrets and `.terraform` directories.
-- 📊 **Diagnostics**: Boot diagnostics are optional and require a storage account. Enable via `diagnostics_enabled = true`.
-- 📁 **File Share Mounting**: Ensure outbound port 445 is allowed for SMB traffic. The share is mounted as drive `Z:` on the VM.
-- 🧼 **Cleanup**: Use `terraform destroy` to remove all resources when no longer needed.
+1. Open `filesharetestfile` in VM and delete the text
+2. Save the file
+3. Add another snapshot
+4. Restore the **oldest snapshot**:
+   - Select snapshot → **Restore** → **Overwrite original file**
+5. Confirm original content is restored in VM
 
 ---
 
 ## 🧹 Cleanup
 
-To destroy all resources and release associated Azure costs:
-
-```bash
-terraform destroy
+### Unmount File Share in VM
+```powershell
+Remove-PSDrive -Name Z -Force
+net use Z: /delete
+cmd.exe /C "cmdkey /delete:terrastorageaccountjlp.file.core.windows.net"
 ```
 
+### Delete Resource Group
+```bash
+az group delete --resource-group terraformRGjlp
+```
 ---
 
-## 📚 License & Contributions
+## ✅ Outcome
 
-This project is open for contributions. Feel free to fork, improve, or submit issues.
-
-Licensed under the [MIT License](LICENSE).
-
----
-
-## 🙌 Acknowledgments
-
-Built with ❤️ by Joshua — cloud engineer, infrastructure-as-code advocate, and lifelong learner.  
-Special thanks to the Terraform and Azure communities for their documentation and tooling.
+- VM and file share deployed successfully
+- File snapshot and restore validated
+- All resources cleaned up
 
 ---
+## 📁 File Structure
 
-## 🧭 Next Steps
+```
+├── main2.tf
+├── variables2.tf
+├── terraform.tfvars
+├── outputs2.tf
+├── vm2.tf
+├── storage2.tf
+├── network2.tf
+```
 
-Want to take this further?
 
-- Add a visual architecture diagram using [draw.io](https://draw.io) or [Diagrams.net](https://www.diagrams.net/)
-- Integrate with GitHub Actions for CI/CD deployment
-- Split into reusable modules for multi-environment provisioning
-- Add Azure Key Vault integration for secret management
-- Extend with auto-scaling, monitoring, or domain join features
+## 🔒 Security Notes
 
+- Credentials are stored securely in `terraform.tfvars`
+- File share access uses temporary credentials via `cmdkey`
+- All resources are deleted post-validation
+
+## 🧠 Author Notes
+
+This setup is designed for clean, declarative infrastructure testing and teardown. Ideal for learning, demos, and reproducible environments.
